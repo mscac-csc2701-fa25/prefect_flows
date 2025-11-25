@@ -176,9 +176,9 @@ def detect_drift(processed_files, override_drift):
 
 
 @task
-def trigger_sagemaker_job(trigger_sagemaker, epochs):
+def trigger_sagemaker_job(trigger_reason, epochs):
     """Trigger sagemaker job if drift detected"""
-    print(f"sagemaker triggered with {trigger_sagemaker} for {epochs} epochs")
+    print(f"sagemaker triggered with {trigger_reason} for {epochs} epochs")
     # aws_credentials = AwsCredentials.load("my-aws-creds")
     # session = aws_credentials.get_boto3_session()
     # sm = session.client("sagemaker")
