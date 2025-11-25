@@ -25,15 +25,26 @@ def main():
     print("Press Ctrl+C to stop all flows")
     print("="*60 + "\n")
     
+    deployment = daily_batch_upload.from_source(
+        source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
+        entrypoint="flows/daily_upload.py:daily_batch_upload"
+    ).deploy(
+        name="daily_batch_upload",
+        work_pool_name="my-ec2-process-pool",
+        cron="0 1 * * *"
+    )
+
+    print("Deployments created:", deployment)  
+
     # Serve all flows together
-    serve(
+    # serve(
 
         # Daily upload flow - runs at 1 AM every day
-        daily_batch_upload.to_deployment(
-            name="daily-batch-upload",
-            cron="0 1 * * *",  # Daily at 1 AM UTC
-            tags=["production", "s3", "daily"]
-        ),
+        # daily_batch_upload.to_deployment(
+        #     name="daily-batch-upload",
+        #     cron="0 1 * * *",  # Daily at 1 AM UTC
+        #     tags=["production", "s3", "daily"]
+        # ),
         
         # # Weekly ML pipeline - runs at 2 AM every Sunday
         # weekly_ml_pipeline.to_deployment(
@@ -48,7 +59,7 @@ def main():
         #     name="sagemaker-training-manual",
         #     tags=["production", "training", "sagemaker"]
         # ),
-    )
+    # )
 
 
 if __name__ == "__main__":

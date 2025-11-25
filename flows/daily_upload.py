@@ -2,10 +2,10 @@
 Daily batch upload - moves images from simulation_pool to incoming
 """
 
-import boto3
 from datetime import datetime
 from pathlib import Path
 from prefect import task, flow
+from prefect_aws.credentials import AwsCredentials
 
 from config import BATCH_SIZE
 from config import BUCKET
@@ -14,7 +14,9 @@ from config import BUCKET
 @task(retries=1)
 def get_available_images(limit=BATCH_SIZE):
     """Get next batch of images from simulation pool"""
-    s3 = boto3.client('s3')
+    aws_credentials = AwsCredentials.load("my-aws-creds")
+    session = aws_credentials.get_boto3_session()
+    s3 = session.client("s3")
     
     response = s3.list_objects_v2(
         Bucket=BUCKET,
@@ -42,7 +44,10 @@ def move_batch(image_keys):
     if not image_keys:
         return 0
     
-    s3 = boto3.client('s3')
+    aws_credentials = AwsCredentials.load("my-aws-creds")
+    session = aws_credentials.get_boto3_session()
+    s3 = session.client("s3")
+
     batch_date = datetime.now().strftime("%Y%m%d")
     moved = 0
     
@@ -89,7 +94,9 @@ def move_batch(image_keys):
 @task
 def get_stats():
     """Get counts from pool and incoming"""
-    s3 = boto3.client('s3')
+    aws_credentials = AwsCredentials.load("my-aws-creds")
+    session = aws_credentials.get_boto3_session()
+    s3 = session.client("s3")
     
     # Count remaining in pool
     try:

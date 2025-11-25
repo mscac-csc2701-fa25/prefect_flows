@@ -21,6 +21,7 @@ def test1():
 
 @flow(name="test2", log_prints=True)
 def test2():
+    print("gonna update some stuff")
     print("TEST2")
     return {
         "status": "fail"
@@ -40,11 +41,11 @@ def main():
     print("Press Ctrl+C to stop all flows")
     print("="*60 + "\n")
     
-    deployment = test1.from_source(
+    deployment = test2.from_source(
         source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
-        entrypoint="flows.run_all_2.py:test1"
+        entrypoint="flows/run_all_2.py:test2"
     ).deploy(
-        name="test_1",
+        name="test_2",
         work_pool_name="my-ec2-process-pool",
         cron="0 1 * * *"
     )
