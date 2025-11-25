@@ -176,9 +176,9 @@ def detect_drift(processed_files, override_drift):
 
 
 @task
-def trigger_sagemaker(trigger_sagemaker, epochs):
+def trigger_sagemaker_job(trigger_sagemaker, epochs):
     """Trigger sagemaker job if drift detected"""
-    print(f"sagemaker triggered with {trigger_sagemaker} for {epoch} epochs")
+    print(f"sagemaker triggered with {trigger_sagemaker} for {epochs} epochs")
     # aws_credentials = AwsCredentials.load("my-aws-creds")
     # session = aws_credentials.get_boto3_session()
     # sm = session.client("sagemaker")
@@ -234,7 +234,7 @@ def trigger_sagemaker(trigger_sagemaker, epochs):
 
 
 @flow(log_prints=True)
-def weekly_ml_pipeline(override_drift: bool = None):
+def weekly_ingestion_pipeline(override_drift: bool = None):
     """Check for new data, preprocess, detect drift, retrain if needed"""
     
     # Find all batch folders
@@ -267,7 +267,7 @@ def weekly_ml_pipeline(override_drift: bool = None):
     
     if drift_detected:
         print("Drift detected - triggering retraining")
-        training_result = trigger_sagemaker(
+        training_result = trigger_sagemaker_job(
             trigger_reason="drift_detected",
             epochs=50
         )
@@ -290,4 +290,4 @@ def weekly_ml_pipeline(override_drift: bool = None):
 
 
 if __name__ == "__main__":
-    weekly_ml_pipeline()
+    weekly_ingestion_pipeline()

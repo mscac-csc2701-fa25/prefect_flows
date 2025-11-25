@@ -6,7 +6,7 @@ This will start all flows with their schedules in a single process.
 """
 from prefect import serve
 from flows.daily_upload import daily_batch_upload
-from flows.weekly_pipeline import weekly_ml_pipeline
+from flows.weekly_data_ingest_and_drift import weekly_ingestion_pipeline
 # from flows.training_pipeline import sagemaker_training_pipeline
 
 
@@ -36,11 +36,11 @@ def main():
 
     # print("Deployments created:", deployment)  
     
-    deployment = weekly_ml_pipeline.from_source(
+    deployment = weekly_ingestion_pipeline.from_source(
         source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
-        entrypoint="flows/weekly_ml_pipeline.py:weekly_ml_pipeline"
+        entrypoint="flows/weekly_data_ingest_and_drift.py:weekly_ingestion_pipeline"
     ).deploy(
-        name="weekly_ml_pipeline",
+        name="weekly_ingestion_pipeline",
         work_pool_name="my-ec2-process-pool",
         cron="0 2 * * 0",  # Sundays at 2 AM UTC
         job_variables={"pip_packages": ["prefect-aws"]}
