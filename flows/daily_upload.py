@@ -48,7 +48,7 @@ def move_batch(image_keys):
     session = aws_credentials.get_boto3_session()
     s3 = session.client("s3")
 
-    batch_date = datetime.now().strftime("%Y%m%d")
+    batch_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     moved = 0
     
     for image_key in image_keys:
@@ -56,8 +56,8 @@ def move_batch(image_keys):
             image_name = Path(image_key).name
             image_stem = Path(image_key).stem
             
-            new_image_key = f'datasets/incoming/raw/batch_{batch_date}/images/{image_name}'
-            new_label_key = f'datasets/incoming/raw/batch_{batch_date}/labels/{image_stem}.txt'
+            new_image_key = f'datasets/incoming/raw/batch_{batch_id}/images/{image_name}'
+            new_label_key = f'datasets/incoming/raw/batch_{batch_id}/labels/{image_stem}.txt'
             
             # Copy and delete image
             s3.copy_object(
