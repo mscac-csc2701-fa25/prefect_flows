@@ -5,10 +5,9 @@ Run with: python run_all.py
 This will start all flows with their schedules in a single process.
 """
 from prefect import serve
-from prefect_flows.flows.daily_upload import daily_batch_upload
-# from prefect_flows.flows.weekly_pipeline import weekly_ml_pipeline
-# from prefect_flows.flows.training_pipeline import sagemaker_training_pipeline
-
+from flows.daily_upload import daily_batch_upload
+from flows.weekly_pipeline import weekly_ml_pipeline
+# from flows.training_pipeline import sagemaker_training_pipeline
 
 
 def main():
@@ -25,13 +24,26 @@ def main():
     print("Press Ctrl+C to stop all flows")
     print("="*60 + "\n")
     
-    deployment = daily_batch_upload.from_source(
+    # deployment = daily_batch_upload.from_source(
+    #     source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
+    #     entrypoint="flows/daily_upload.py:daily_batch_upload"
+    # ).deploy(
+    #     name="daily_batch_upload",
+    #     work_pool_name="my-ec2-process-pool",
+    #     cron="0 1 * * *",
+    #     job_variables={"pip_packages": ["prefect-aws"]}
+    # )
+
+    # print("Deployments created:", deployment)  
+    
+    deployment = weekly_ml_pipeline.from_source(
         source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
-        entrypoint="flows/daily_upload.py:daily_batch_upload"
+        entrypoint="flows/weekly_ml_pipeline.py:weekly_ml_pipeline"
     ).deploy(
-        name="daily_batch_upload",
+        name="weekly_ml_pipeline",
         work_pool_name="my-ec2-process-pool",
-        cron="0 1 * * *"
+        cron="0 2 * * 0",  # Sundays at 2 AM UTC
+        job_variables={"pip_packages": ["prefect-aws"]}
     )
 
     print("Deployments created:", deployment)  
