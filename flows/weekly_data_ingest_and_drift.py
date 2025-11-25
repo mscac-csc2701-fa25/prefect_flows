@@ -234,7 +234,7 @@ def trigger_sagemaker_job(trigger_sagemaker, epochs):
 
 
 @flow(log_prints=True)
-def weekly_ingestion_pipeline(override_drift: bool = None):
+def weekly_ingestion_pipeline(override_drift: bool | None = None):
     """Check for new data, preprocess, detect drift, retrain if needed"""
     
     # Find all batch folders
