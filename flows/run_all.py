@@ -7,6 +7,7 @@ This will start all flows with their schedules in a single process.
 from prefect import serve
 from flows.daily_upload import daily_batch_upload
 from flows.weekly_data_ingest_and_drift import weekly_ingestion_pipeline
+from flows.evaluate_pipeline import evaluate_pipeline
 # from flows.training_pipeline import sagemaker_training_pipeline
 
 
@@ -24,6 +25,7 @@ def main():
     print("Press Ctrl+C to stop all flows")
     print("="*60 + "\n")
     
+    # Deployment 1
     # deployment = daily_batch_upload.from_source(
     #     source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
     #     entrypoint="flows/daily_upload.py:daily_batch_upload"
@@ -36,14 +38,27 @@ def main():
 
     # print("Deployments created:", deployment)  
     
-    deployment = weekly_ingestion_pipeline.from_source(
+    # Deployment 2
+    # deployment = weekly_ingestion_pipeline.from_source(
+    #     source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
+    #     entrypoint="flows/weekly_data_ingest_and_drift.py:weekly_ingestion_pipeline"
+    # ).deploy(
+    #     name="weekly_ingestion_pipeline",
+    #     work_pool_name="my-ec2-process-pool",
+    #     cron="0 2 * * 0",  # Sundays at 2 AM UTC
+    #     job_variables={"pip_packages": ["prefect-aws"]}
+    # )
+
+    # print("Deployments created:", deployment)  
+
+    # Deployment 3
+    deployment = evaluate_pipeline.from_source(
         source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
-        entrypoint="flows/weekly_data_ingest_and_drift.py:weekly_ingestion_pipeline"
+        entrypoint="flows/evaluate_pipeline.py:evaluate_pipeline"
     ).deploy(
-        name="weekly_ingestion_pipeline",
+        name="evaluate_pipeline",
         work_pool_name="my-ec2-process-pool",
-        cron="0 2 * * 0",  # Sundays at 2 AM UTC
-        job_variables={"pip_packages": ["prefect-aws"]}
+        job_variables={"pip_packages": ["mlflow"]}
     )
 
     print("Deployments created:", deployment)  
