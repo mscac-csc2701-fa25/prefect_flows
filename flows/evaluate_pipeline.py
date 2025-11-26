@@ -145,7 +145,7 @@ def archive_non_production_model(
 
 @flow(name="evaluate_pipeline", log_prints=True)
 def evaluate_pipeline(
-    incoming_run_id: str = None,
+    incoming_run_id: str | None = None,
     model_name: str = "fire_vs_smoke_yolov8",
 ):
     client = get_mlflow_client()
