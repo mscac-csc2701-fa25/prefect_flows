@@ -391,16 +391,27 @@ def weekly_ingestion_pipeline(override_drift: bool | None = None, use_existing_p
         print(f"Drift score: {drift_score:.4f}")
         
         if drift_detected:
-            print("Drift detected in existing data")
+            print("Drift detected in existing data - triggering retraining")
+            training_result = trigger_sagemaker_job(
+                trigger_reason="drift_detected_test",
+                epochs=50
+            )
+            
+            return {
+                "status": "test_run_retrained",
+                "drift_detected": drift_detected,
+                "drift_score": drift_score,
+                "processed": len([f for f in processed_files if '/images/' in f]),
+                "training_result": training_result
+            }
         else:
             print("No significant drift in existing data")
-        
-        return {
-            "status": "test_run",
-            "drift_detected": drift_detected,
-            "drift_score": drift_score,
-            "processed": len([f for f in processed_files if '/images/' in f])
-        }
+            return {
+                "status": "test_run_no_drift",
+                "drift_detected": drift_detected,
+                "drift_score": drift_score,
+                "processed": len([f for f in processed_files if '/images/' in f])
+            }
     
     # Normal flow continues
     # Find all batch folders
