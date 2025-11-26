@@ -330,13 +330,81 @@ def trigger_sagemaker_job(trigger_reason, epochs):
 
 
 
+@task(retries=1)
+def get_existing_processed_files():
+    """Get all images from existing weekly_batch folders in processed/"""
+    aws_credentials = AwsCredentials.load("my-aws-creds")
+    session = aws_credentials.get_boto3_session()
+    s3 = session.client("s3")
+    
+    # List all folders under processed/
+    response = s3.list_objects_v2(
+        Bucket=BUCKET,
+        Prefix=PROCESSED_PREFIX,
+        Delimiter='/'
+    )
+    
+    if 'CommonPrefixes' not in response:
+        return []
+    
+    # Filter for weekly_batch_ prefixes
+    weekly_batch_folders = [
+        prefix['Prefix'] for prefix in response['CommonPrefixes']
+        if 'weekly_batch_' in prefix['Prefix']
+    ]
+    
+    if not weekly_batch_folders:
+        print("No existing weekly_batch folders found")
+        return []
+    
+    # Get all images from all weekly_batch folders
+    all_images = []
+    for folder in weekly_batch_folders:
+        img_response = s3.list_objects_v2(
+            Bucket=BUCKET,
+            Prefix=f'{folder}images/'
+        )
+        if 'Contents' in img_response:
+            all_images.extend([
+                obj['Key'] for obj in img_response['Contents']
+                if not obj['Key'].endswith('/')
+            ])
+    
+    print(f"Found {len(all_images)} images across {len(weekly_batch_folders)} weekly_batch folders")
+    return all_images
+
+
 @flow(log_prints=True)
-def weekly_ingestion_pipeline(override_drift: bool | None = None):
+def weekly_ingestion_pipeline(override_drift: bool | None = None, use_existing_processed: bool = False):
     """Check for new data, preprocess, detect drift, retrain if needed"""
     
+    if use_existing_processed:
+        print("Using existing processed files for testing...")
+        processed_files = get_existing_processed_files()
+        
+        if not processed_files:
+            print("No existing processed files found")
+            return {"status": "no_existing_data"}
+        
+        # Check drift with existing processed data
+        drift_detected, drift_score = detect_drift(processed_files, override_drift)
+        print(f"Drift score: {drift_score:.4f}")
+        
+        if drift_detected:
+            print("Drift detected in existing data")
+        else:
+            print("No significant drift in existing data")
+        
+        return {
+            "status": "test_run",
+            "drift_detected": drift_detected,
+            "drift_score": drift_score,
+            "processed": len([f for f in processed_files if '/images/' in f])
+        }
+    
+    # Normal flow continues
     # Find all batch folders
     batch_folders = get_batch_folders()
-    
     if not batch_folders:
         print("No batch folders to process")
         return {"status": "no_new_data"}
@@ -384,7 +452,6 @@ def weekly_ingestion_pipeline(override_drift: bool | None = None):
             "processed": len(images),
             "weekly_batch": weekly_batch_prefix
         }
-
 
 if __name__ == "__main__":
     weekly_ingestion_pipeline()
