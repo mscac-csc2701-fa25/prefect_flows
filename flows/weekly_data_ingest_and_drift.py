@@ -9,6 +9,11 @@ from prefect import flow, task
 from prefect_aws import AwsCredentials
 from config import BUCKET, INCOMING_PREFIX, PROCESSED_PREFIX
 
+from scipy.stats import ks_2samp
+from PIL import Image
+import io
+import numpy as np
+import random
 
 @task(retries=1)
 def get_batch_folders():
@@ -160,19 +165,111 @@ def cleanup_batch_folders(batch_folders):
     print(f"Cleaned up {len(batch_folders)} batch folders")
 
 
-@task
+@task(retries=1)
 def detect_drift(processed_files, override_drift):
     """Check if drift detected in new data"""
-    # Placeholder - returns (drift_detected, drift_score)
-    # return detect_drift({'total_images': num_processed})
-    if override_drift is None:
-        # Actually detect drift
-        drift = (False, 0.32)
-    elif override_drift is True:
-        drift = (True, 0.67)
-    else:
-        drift = (False, 0.32)
-    return drift
+    
+    # Handle override for testing
+    if override_drift is True:
+        return (True, 0.67)
+    elif override_drift is False:
+        return (False, 0.32)
+    
+    # Minimum threshold - need at least 30 images to do meaningful drift detection
+    num_images = len([f for f in processed_files if '/images/' in f])
+    if num_images < 30:
+        print(f"Only {num_images} images - skipping drift detection (minimum 30 required)")
+        return (False, 0.0)
+    
+    aws_credentials = AwsCredentials.load("my-aws-creds")
+    session = aws_credentials.get_boto3_session()
+    s3 = session.client("s3")
+    
+    try:
+        
+        # Get baseline (training) images - sample same number as weekly batch
+        baseline_response = s3.list_objects_v2(
+            Bucket=BUCKET,
+            Prefix='datasets/baseline/train/'
+        )
+        
+        if 'Contents' not in baseline_response:
+            print("No baseline images found")
+            return (False, 0.0)
+        
+        baseline_images = [
+            obj['Key'] for obj in baseline_response['Contents'] 
+            if obj['Key'].lower().endswith(('.jpg', '.jpeg', '.png'))
+        ]
+        
+        # Random sample from baseline to match weekly batch size
+        if len(baseline_images) > num_images:
+            baseline_sample = random.sample(baseline_images, num_images)
+        else:
+            baseline_sample = baseline_images
+        
+        # Helper function to load image and extract properties
+        def get_image_properties(s3_key):
+            obj = s3.get_object(Bucket=BUCKET, Key=s3_key)
+            img = Image.open(io.BytesIO(obj['Body'].read()))
+            arr = np.array(img)
+            
+            # Calculate basic properties
+            brightness = arr.mean()
+            contrast = arr.std()
+            
+            if len(arr.shape) == 3 and arr.shape[2] == 3:  # RGB
+                r_mean = arr[:,:,0].mean()
+                g_mean = arr[:,:,1].mean()
+                b_mean = arr[:,:,2].mean()
+            else:  # Grayscale
+                r_mean = g_mean = b_mean = brightness
+            
+            return {
+                'brightness': brightness,
+                'contrast': contrast,
+                'r_mean': r_mean,
+                'g_mean': g_mean,
+                'b_mean': b_mean
+            }
+        
+        # Extract properties from baseline
+        print(f"Extracting properties from {len(baseline_sample)} baseline images...")
+        baseline_props = [get_image_properties(key) for key in baseline_sample]
+        
+        # Extract properties from weekly batch
+        weekly_images = [f for f in processed_files if '/images/' in f]
+        print(f"Extracting properties from {len(weekly_images)} weekly images...")
+        weekly_props = [get_image_properties(key) for key in weekly_images]
+        
+        # Perform KS test on each property
+        drift_scores = {}
+        for prop in ['brightness', 'contrast', 'r_mean', 'g_mean', 'b_mean']:
+            baseline_vals = [p[prop] for p in baseline_props]
+            weekly_vals = [p[prop] for p in weekly_props]
+            
+            statistic, pvalue = ks_2samp(baseline_vals, weekly_vals)
+            drift_scores[prop] = {'statistic': statistic, 'pvalue': pvalue}
+        
+        # Calculate overall drift score (average KS statistic)
+        avg_drift_score = np.mean([s['statistic'] for s in drift_scores.values()])
+        
+        # Check if any property shows significant drift (p < 0.05)
+        significant_drift = any(s['pvalue'] < 0.05 for s in drift_scores.values())
+        
+        print(f"Drift analysis:")
+        for prop, scores in drift_scores.items():
+            print(f"  {prop}: KS={scores['statistic']:.4f}, p={scores['pvalue']:.4f}")
+        
+        # Drift detected if p-value < 0.05 for any property
+        drift_detected = significant_drift
+        
+        return (drift_detected, float(avg_drift_score))
+        
+    except Exception as e:
+        print(f"Error during drift detection: {e}")
+        # Default to no drift if detection fails
+        return (False, 0.0)
 
 
 @task

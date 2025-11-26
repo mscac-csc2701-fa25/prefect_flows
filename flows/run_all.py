@@ -39,29 +39,29 @@ def main():
     # print("Deployments created:", deployment)  
     
     # Deployment 2
-    # deployment = weekly_ingestion_pipeline.from_source(
-    #     source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
-    #     entrypoint="flows/weekly_data_ingest_and_drift.py:weekly_ingestion_pipeline"
-    # ).deploy(
-    #     name="weekly_ingestion_pipeline",
-    #     work_pool_name="my-ec2-process-pool",
-    #     cron="0 2 * * 0",  # Sundays at 2 AM UTC
-    #     job_variables={"pip_packages": ["prefect-aws"]}
-    # )
-
-    # print("Deployments created:", deployment)  
-
-    # Deployment 3
-    deployment = evaluate_pipeline.from_source(
+    deployment = weekly_ingestion_pipeline.from_source(
         source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
-        entrypoint="flows/evaluate_pipeline.py:evaluate_pipeline"
+        entrypoint="flows/weekly_data_ingest_and_drift.py:weekly_ingestion_pipeline"
     ).deploy(
-        name="evaluate_pipeline",
+        name="weekly_ingestion_pipeline",
         work_pool_name="my-ec2-process-pool",
-        job_variables={"pip_packages": ["mlflow"]}
+        cron="0 2 * * 0",  # Sundays at 2 AM UTC
+        job_variables={"pip_packages": ["prefect-aws", "scipy", "pillow", "numpy"]}
     )
 
     print("Deployments created:", deployment)  
+
+    # Deployment 3
+    # deployment = evaluate_pipeline.from_source(
+    #     source="https://github.com/mscac-csc2701-fa25/prefect_flows.git",
+    #     entrypoint="flows/evaluate_pipeline.py:evaluate_pipeline"
+    # ).deploy(
+    #     name="evaluate_pipeline",
+    #     work_pool_name="my-ec2-process-pool",
+    #     job_variables={"pip_packages": ["mlflow"]}
+    # )
+
+    # print("Deployments created:", deployment)  
 
     # Serve all flows together
     # serve(
