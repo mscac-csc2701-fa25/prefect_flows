@@ -23,6 +23,14 @@ def get_production_run_info(client: MlflowClient, model_name: str):
     return prod_mv.run_id, prod_mv.version
 
 @task
+def get_staging_run_info(client: MlflowClient, model_name: str):
+    latest = client.get_latest_versions(model_name, stages=["Staging"])
+    if not latest:
+        raise ValueError(f"No version found for model '{model_name}' in stage 'Staging'")
+    staging_mv = latest[0]
+    return staging_mv.run_id, staging_mv.version
+
+@task
 def print_and_compare_metrics(
     incoming_metrics: dict,
     prod_metrics: dict,
@@ -117,22 +125,44 @@ def promote_model_to_production(
     logger.info(f"✅ Promoted version {incoming_version} to Production (archived v{current_prod_version})")
     return incoming_version
 
+@task
+def archive_non_production_model(
+    client: MlflowClient,
+    model_name: str,
+    version_to_archive: int
+):
+    """Archive a model version that is not in production."""
+    logger = get_run_logger()
+    
+    client.transition_model_version_stage(
+        name=model_name,
+        version=version_to_archive,
+        stage="Archived",
+        archive_existing_versions=False
+    )
+    
+    logger.info(f"✅ Archived version {version_to_archive}")
+
 @flow(name="evaluate_pipeline", log_prints=True)
 def evaluate_pipeline(
-    incoming_run_id: str,
-    model_name: str,
+    incoming_run_id: str = None,
+    model_name: str = "fire_vs_smoke_yolov8",
 ):
     client = get_mlflow_client()
     logger = get_run_logger()
+
+    # If no run_id provided, fetch staging model
+    if incoming_run_id is None:
+        logger.info("No run_id provided, fetching latest Staging model...")
+        incoming_run_id, incoming_version = get_staging_run_info(client, model_name)
+        logger.info(f"Using Staging model version {incoming_version}, run_id: {incoming_run_id}")
 
     incoming_metrics = get_latest_metrics_for_run(client, incoming_run_id)
     prod_run_id, prod_version = get_production_run_info(client, model_name)
     prod_metrics = get_latest_metrics_for_run(client, prod_run_id)
 
-
     logger.info(f"\n### Incoming run_id: {incoming_run_id}")
-    logger.info(f"\n### Production model version: {prod_version}, run_id: {prod_run_id}")
-
+    logger.info(f"### Production model version: {prod_version}, run_id: {prod_run_id}")
 
     should_promote = print_and_compare_metrics(
         incoming_metrics, 
@@ -140,13 +170,27 @@ def evaluate_pipeline(
     )
     
     if should_promote:
-        promote_model_to_production(client, incoming_run_id, model_name, prod_version)
+        new_prod_version = promote_model_to_production(client, incoming_run_id, model_name, prod_version)
+        logger.info(f"New production version: {new_prod_version}")
     else:
         logger.info(f"Keeping version {prod_version} in production.")
+        # If incoming model was from staging, archive it since it's not being promoted
+        if incoming_run_id is not None:
+            logger.info(f"Archiving model in staging.")
+            try:
+                # Get the version number for the incoming run_id
+                all_versions = client.search_model_versions(f"name='{model_name}'")
+                for mv in all_versions:
+                    if mv.run_id == incoming_run_id and mv.current_stage == "Staging":
+                        archive_non_production_model(client, model_name, mv.version)
+                        break
+            except Exception as e:
+                logger.warning(f"Could not archive incoming model: {e}")
 
 
 if __name__ == "__main__":
-    evaluate_pipeline(
-        incoming_run_id="8360a84aeb0f40a0943064e117ad31d0",
-        model_name="fire_vs_smoke_yolov8",
-    )
+    # Example 1: With specific run_id
+    # evaluate_pipeline(incoming_run_id="8360a84aeb0f40a0943064e117ad31d0")
+    
+    # Example 2: Without run_id (will use latest Staging model)
+    evaluate_pipeline()
