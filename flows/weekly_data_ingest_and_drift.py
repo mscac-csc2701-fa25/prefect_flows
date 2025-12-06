@@ -394,7 +394,7 @@ def weekly_ingestion_pipeline(override_drift: bool | None = None, use_existing_p
             print("Drift detected in existing data - triggering retraining")
             training_result = trigger_sagemaker_job(
                 trigger_reason="drift_detected_test",
-                epochs=50
+                epochs=10
             )
             
             return {
@@ -445,7 +445,7 @@ def weekly_ingestion_pipeline(override_drift: bool | None = None, use_existing_p
         print("Drift detected - triggering retraining")
         training_result = trigger_sagemaker_job(
             trigger_reason="drift_detected",
-            epochs=50
+            epochs=10
         )
         
         return {

@@ -2,3 +2,6 @@ prefect
 prefect-aws
 dotenv
 mlflow
+scipy
+pillow
+numpy
