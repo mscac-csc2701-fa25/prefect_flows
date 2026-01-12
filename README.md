@@ -2,8 +2,17 @@
 
 This project implements a **MLOps pipeline** using **Prefect** to orchestrate workflows, including data drift detection and retraining pipelines.
 
-## Tech Stack:
 
+## Architecture
+
+![AWS Cloud Architecture](https://github.com/user-attachments/assets/36a1c8c2-90bd-4f28-91ce-c98bc21dbaf3)
+
+## Resources
+▶️ [Video](https://drive.google.com/file/d/1EO57USC1840ea61tjymcoT-Xkpl7xF6P/view)
+
+📊 [Project Presentation Slides](https://docs.google.com/presentation/d/1UmJI0nPxKvHcp8lfnWX6v3QKNhzeMd30BHC5Jz9sE00/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45)
+
+## Tech Stack:
 
 Experiment Tracking & Model Registry
 - [MLflow](https://mlflow.org/) – Track experiments, log metrics, and manage model registry
@@ -17,14 +26,6 @@ AWS Services
 - **EventBridge + Lambda** – Event-driven triggers for automated retraining
 - **EC2** – Host the MLflow Tracking Server
 
-## Architecture
-
-![AWS Cloud Architecture](https://github.com/user-attachments/assets/36a1c8c2-90bd-4f28-91ce-c98bc21dbaf3)
-
-## Resources
-▶️ [Video](https://drive.google.com/file/d/1EO57USC1840ea61tjymcoT-Xkpl7xF6P/view)
-
-📊 [Project Presentation Slides](https://docs.google.com/presentation/d/1UmJI0nPxKvHcp8lfnWX6v3QKNhzeMd30BHC5Jz9sE00/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45)
 
 ### Lambda Function
 > Sidenote: This AWS Lambda function is triggered by SageMaker events and programmatically starts a Prefect flow for model evaluation.
